@@ -1,25 +1,19 @@
-// src/TodoTopPage.jsx
-import './App.css';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiClient from './api/todoApi';
+import './App.css';
 
 function TodoTopPage() {
     const navigate = useNavigate();
-    const [lists, setLists] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // JavaのAPIからリスト一覧を取得して、データがあるかチェックする
     useEffect(() => {
         const checkExistingData = async () => {
             try {
-                const response = await fetch('http://localhost:8080/lists');
-                if (response.ok) {
-                    const data = await response.json();
-                    setLists(data);
-                    // 仕様書ルール：「既存のデータがある場合は、自動的にTODOリストメイン画面に遷移する」
-                    if (data.length > 0) {
-                        navigate('/todo/main');
-                    }
+                const response = await apiClient.get('/lists');
+                // リストが1件でもあれば、自動的にメイン画面へ進む
+                if (response.data && response.data.length > 0) {
+                    navigate('/todo/main');
                 }
             } catch (error) {
                 console.error('サーバー接続エラー:', error);
@@ -27,8 +21,16 @@ function TodoTopPage() {
                 setLoading(false);
             }
         };
-        checkExistingData();
+        void checkExistingData();
     }, [navigate]);
+
+
+    const handleLogout = () => {
+        if (window.confirm('ログアウトしますか？')) {
+            localStorage.clear();
+            navigate('/todo/login');
+        }
+    };
 
     if (loading) return <div style={{ padding: '20px' }}>読み込み中...</div>;
 
@@ -37,31 +39,37 @@ function TodoTopPage() {
             {/* ヘッダーエリア */}
             <div className="todo-header">
                 <h2>名前未設定</h2>
-                <button className="nav-button" onClick={() => navigate('/todo/lists')}>
-                    リストの管理
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+
+                    <button className="nav-button" onClick={handleLogout} style={{ backgroundColor: '#fff', color: '#e74c3c', borderColor: '#e74c3c', cursor: 'pointer' }}>
+                        ログアウト
+                    </button>
+                    <button className="nav-button" onClick={() => navigate('/todo/lists')}>
+                        リストの管理
+                    </button>
+                </div>
             </div>
 
-            {/* タブエリア（名前未設定タブを1つ表示） */}
+            {/* タブ*/}
             <div className="tabs">
                 <div className="tab active">名前未設定</div>
             </div>
 
-            {/* 削除ボタンエリア（仕様書：タスクが0件の間は「削除」ボタンは非活性表示とする） */}
+            {/* 削除ボタン*/}
             <div className="action-area">
                 <button className="delete-btn" disabled>
                     削除
                 </button>
             </div>
 
-            {/* メインメッセージ（仕様書：タスクがないため、「まだタスクが登録されていません」とメッセージを表示する） */}
+            {/* メインメッセージ */}
             <div className="empty-message">
                 まだタスクが登録されていません
             </div>
 
-            {/* タスクの追加ボタンエリア */}
+            {/* タスクの追加ボタン */}
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                <button className="add-trigger-btn" onClick={() => navigate('/todo/tasks')}>
+                <button className="add-trigger-btn" onClick={() => navigate('/todo/tasks?listId=-1')}>
                     タスクの追加
                 </button>
             </div>

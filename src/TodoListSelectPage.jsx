@@ -1,38 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiClient from './api/todoApi';
 
 function TodoListSelectPage() {
   const navigate = useNavigate();
   const [listName, setListName] = useState('');
-
-  // 最初は空の配列にしておき、JavaのAPIから取得したデータを入れます
   const [lists, setLists] = useState([]);
 
-  // 【API通信：一覧取得】画面が開いた瞬間に自動でJavaからリスト一覧を読み込む
-  const fetchLists = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/lists');
-      if (response.ok) {
-        const data = await response.json();
-        setLists(data); // Javaから届いたリスト一覧を画面にセット
-      } else {
-        console.error('リストの取得に失敗しました');
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const response = await apiClient.get('/lists');
+        setLists(response.data);
+      } catch (error) {
+        console.error('バックエンドサーバーに接続できません', error);
       }
+    };
+
+    void fetchLists();
+  }, []);
+
+  const refreshLists = async () => {
+    try {
+      const response = await apiClient.get('/lists');
+      setLists(response.data);
     } catch (error) {
-      console.error('バックエンドサーバーに接続できません', error);
+      console.error('再取得エラー:', error);
     }
   };
 
-  // 画面が表示されたときに実行するおまじない
-  useEffect(() => {
-    fetchLists();
-  }, []);
-
-  // 【API通信：リスト登録】追加ボタンが押されたときの処理
   const handleAddList = async (e) => {
     e.preventDefault();
 
-    // フロント側でのバリデーション（空チェック、21文字以上はエラー）
     if (!listName.trim()) {
       alert('リスト名を入力してください。');
       return;
@@ -43,45 +42,35 @@ function TodoListSelectPage() {
     }
 
     try {
-      // Javaの POST /lists APIを呼び出す
-      const response = await fetch('http://localhost:8080/lists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listName: listName })
-      });
+      const response = await apiClient.post('/lists', { listName: listName });
 
       if (response.status === 201) {
-        // 登録成功(211ではなく201)
-        setListName(''); // 入力欄を空にする
-        fetchLists(); // 最新の一覧をJavaから再取得して画面を更新
-      } else if (response.status === 400) {
-        // Java側から返ってきたエラー（重複など）をキャッチ
-        const errorData = await response.json();
-        alert(errorData.message || '入力不備または重複エラーです。');
+        setListName('');
+        await refreshLists();
       }
     } catch (error) {
-      alert('サーバーとの通信に失敗しました。');
+      if (error.response && error.response.status === 400) {
+        alert(error.response.data.message || '入力不備または重複エラーです。');
+      } else {
+        alert('サーバーとの通信に失敗しました。');
+      }
     }
   };
 
-  // 【API通信：リスト削除】削除ボタンが押されたときの処理
   const handleDeleteList = async (listId) => {
     if (!window.confirm('このリストを削除しますか？（含まれるタスクも削除されます）')) {
       return;
     }
 
     try {
-      // Javaの DELETE /lists/{id} APIを呼び出す
-      const response = await fetch(`http://localhost:8080/lists/${listId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchLists(); // 削除が成功したら一覧を更新
+      const response = await apiClient.delete(`/lists/${listId}`);
+      if (response.status === 200 || response.status === 204) {
+        await refreshLists();
       } else {
         alert('削除に失敗しました。');
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('通信エラー:', err);
       alert('サーバーとの通信に失敗しました。');
     }
   };
@@ -120,7 +109,7 @@ function TodoListSelectPage() {
               >
             <span
                 onClick={() => navigate(`/todo/main?listId=${list.listId}`)}
-                style={{ cursor: 'pointer', color: '#3498db', fontWeight: 'bold', fontSize: '18px', flex: 1, textSalign: 'center' }}
+                style={{ cursor: 'pointer', color: '#3498db', fontWeight: 'bold', fontSize: '18px', flex: 1, textAlign: 'center' }}
             >
               {list.listName}
             </span>

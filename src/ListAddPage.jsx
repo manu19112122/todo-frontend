@@ -1,56 +1,62 @@
-// src/ListAddPage.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiClient from './api/todoApi';
 import './App.css';
 
 function ListAddPage() {
     const navigate = useNavigate();
     const [listName, setListName] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
-    const [successMessage, setSuccessMessage] = useState(''); // ★追加成功メッセージ用の状態
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleAddList = async (e) => {
         e.preventDefault();
         setErrorMessage('');
-        setSuccessMessage(''); // メッセージを一旦リセット
+        setSuccessMessage('');
 
         if (!listName.trim()) {
-            setErrorMessage('リスト名を入力してください');
+            setErrorMessage('リスト名を入力してください。');
             return;
         }
         if (listName.length >= 21) {
-            setErrorMessage('文字数は20文字以内にして入力してください');
+            setErrorMessage('文字数は20文字以内にしてください。');
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:8080/lists', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ listName: listName })
+            setIsSubmitting(true);
+            const currentName = listName;
+
+            await apiClient.post('/lists', {
+                listName: currentName
             });
 
-            if (response.status === 201) {
-                // ★修正①・②：管理画面に戻らず、入力欄の下に成功メッセージを表示する
-                setSuccessMessage(`リスト：${listName}は追加されました`);
-                setListName(''); // 次の入力のために欄を空にする
-            } else if (response.status === 400) {
+            setSuccessMessage(`リスト：${currentName}が追加されました`);
+            setListName('');
+        } catch (err) {
+            console.error('リスト追加エラー:', err);
+            if (err.response && err.response.status === 400) {
                 setErrorMessage('既に登録されているリスト名は使用できません');
+            } else {
+                setErrorMessage('リストの登録に失敗しました。サーバーの接続を確認してください。');
             }
-        } catch (error) {
-            setErrorMessage('サーバーとの通信に失敗しました');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
         <div className="todo-container">
-            {/* ヘッダーエリア */}
             <div className="todo-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {/* 戻るボタンは左端に固定 */}
-                <button className="back-button" onClick={() => navigate('/todo/lists')} style={{ position: 'absolute', left: 0 }}>
+                <button
+                    className="back-button"
+                    onClick={() => navigate('/todo/lists')}
+                    disabled={isSubmitting}
+                    style={{ position: 'absolute', left: 0 }}
+                >
                     戻る
                 </button>
-                {/* ★修正③：タイトル名を真ん中（中央）に配置 */}
                 <h2 style={{ margin: 0, fontSize: '22px', textAlign: 'center', width: '100%' }}>リストの追加</h2>
             </div>
 
@@ -58,24 +64,28 @@ function ListAddPage() {
                 <input
                     type="text"
                     className="input-field"
-                    placeholder="リスト名を入力してください"
+                    placeholder="新しいリスト名を入力"
                     value={listName}
                     onChange={(e) => {
                         setListName(e.target.value);
                         if (errorMessage) setErrorMessage('');
-                        if (successMessage) setSuccessMessage(''); // 文字入力を始めたらメッセージを消す
+                        if (successMessage) setSuccessMessage('');
                     }}
                     maxLength={25}
+                    disabled={isSubmitting}
                 />
 
-                {/* エラーメッセージ（赤字） */}
-                {errorMessage && <span className="error-text">{errorMessage}</span>}
 
-                {/* ★修正②：追加成功メッセージ（緑字で入力欄の下に表示） */}
+                {errorMessage && <span className="error-text">{errorMessage}</span>}
                 {successMessage && <span className="success-text">{successMessage}</span>}
 
-                <button type="submit" className="submit-btn">
-                    追加
+                <button
+                    type="submit"
+                    className="submit-btn"
+                    style={{ cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }}
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? '追加中...' : '追加'}
                 </button>
             </form>
         </div>
