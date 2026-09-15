@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://eloquent-mochi-309d45.netlify.app',
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://onrender.com',
     headers: {
         'Content-Type': 'application/json',
     },
