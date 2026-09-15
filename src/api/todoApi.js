@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://onrender.com',
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://todo-backend-app-kb5o.onrender.com',
     headers: {
         'Content-Type': 'application/json',
     },
